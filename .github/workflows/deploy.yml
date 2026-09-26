@@ -2,7 +2,7 @@ name: Deploy Auth Server
 
 on:
   push:
-    branches: [production]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -13,7 +13,9 @@ jobs:
         run: |
           set -e
           cd ${{ secrets.DEPLOY_PATH }}/folio-auth-server
-          git pull origin production
+          git fetch origin
+          git checkout main
+          git pull origin main
           docker compose up -d --build
           docker image prune -f
           echo "✅ folio-auth-server deployed at $(date)"
