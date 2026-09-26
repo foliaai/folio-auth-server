@@ -10,7 +10,7 @@ services:
       - .env.production
     volumes:
       # RS256 私钥只挂载不进镜像；服务器上：openssl genpkey -algorithm RSA
-      #   -pkeyopt rsa_keygen_bits:2048 -o /data/folio-auth/auth_private_key.pem
+      #   -pkeyopt rsa_keygen_bits:2048 -out /data/folio-auth/auth_private_key.pem
       - /data/folio-auth:/data/folio-auth:ro
     networks:
       # 与 AKS 同源的 infra 网络：MySQL / Redis 容器互访
