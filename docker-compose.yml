@@ -1,0 +1,24 @@
+services:
+  # ==================== folio-auth-server（统一认证与系统设置，:8003） ====================
+  folio-auth-api:
+    build: .
+    container_name: folio-auth-api
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    env_file:
+      - .env.production
+    volumes:
+      # RS256 私钥只挂载不进镜像；服务器上：openssl genpkey -algorithm RSA
+      #   -pkeyopt rsa_keygen_bits:2048 -o /data/folio-auth/auth_private_key.pem
+      - /data/folio-auth:/data/folio-auth:ro
+    networks:
+      # 与 AKS 同源的 infra 网络：MySQL / Redis 容器互访
+      - mysql_default
+      - redis_default
+
+networks:
+  mysql_default:
+    external: true
+  redis_default:
+    external: true

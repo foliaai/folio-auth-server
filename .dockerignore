@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.DS_Store
+*.log
+.git/
+.github/
+scripts/
+.env
+.env.local
+.env.production
+.env.jp

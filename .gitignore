@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# 部署环境文件（含密钥，禁止提交）
+.env.production
+.env.jp

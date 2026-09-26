@@ -202,12 +202,15 @@ wheels = [
 [[package]]
 name = "folio-auth-core"
 version = "0.1.0"
-source = { directory = "../folio-auth-core" }
+source = { path = "third_party/folio_auth_core-0.1.0-py3-none-any.whl" }
 dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
     { name = "loguru" },
     { name = "pyjwt", extra = ["crypto"] },
+]
+wheels = [
+    { filename = "folio_auth_core-0.1.0-py3-none-any.whl", hash = "sha256:091d250af535643e2543168c8812be6ababd98f9b55aa45f63856958b1da820d" },
 ]
 
 [package.metadata]
@@ -217,9 +220,6 @@ requires-dist = [
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10.1" },
 ]
-
-[package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=8.3.0" }]
 
 [[package]]
 name = "folio-auth-server"
@@ -249,7 +249,7 @@ dev = [
 requires-dist = [
     { name = "cryptography", specifier = ">=44.0.0" },
     { name = "fastapi", specifier = ">=0.129.0" },
-    { name = "folio-auth-core", directory = "../folio-auth-core" },
+    { name = "folio-auth-core", path = "third_party/folio_auth_core-0.1.0-py3-none-any.whl" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "pydantic", specifier = ">=2.12.5" },
