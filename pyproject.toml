@@ -1,0 +1,36 @@
+[project]
+name = "folio-auth-server"
+version = "0.1.0"
+description = "Folio 统一认证与系统设置服务（唯一 token 签发方：RS256 私钥 + JWKS；OA/Logto 上游登录、用户管理、登录审计、全局设置）"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "cryptography>=44.0.0",
+    "fastapi>=0.129.0",
+    "folio-auth-core>=0.1.0",
+    "httpx>=0.28.1",
+    "loguru>=0.7.3",
+    "pydantic>=2.12.5",
+    "pyjwt[crypto]>=2.10.1",
+    "pymysql>=1.1.2",
+    "python-dotenv>=1.2.1",
+    "redis[hiredis]>=7.1.0",
+    "sqlalchemy>=2.0.45",
+    "uvicorn>=0.41.0",
+]
+
+# folio-auth-core 依赖来源：
+#   本地开发：使用相对路径（当前配置），修改 core 后重启服务即生效
+#   正式使用：core 仓库打 tag 并 push 后，替换为下面这行
+#     folio-auth-core = { git = "https://github.com/foliaai/folio-auth-core.git", tag = "v0.1.0" }
+[tool.uv.sources]
+folio-auth-core = { path = "../folio-auth-core" }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+]
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
