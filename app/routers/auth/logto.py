@@ -120,15 +120,20 @@ async def logto_login(
         )
         raise HTTPException(status_code=403, detail="账号已被禁用，请联系管理员")
 
+    # 展示名优先库内值（用户可能自定义过昵称），库内为空退化上游名
+    effective_name = (profile.nickname if profile else None) or display_name or user_id
+
     token, expires_in = create_access_token(
-        user_id, display_name or None, role=profile.role if profile else None
+        user_id,
+        (profile.nickname if profile else None) or display_name or None,
+        role=profile.role if profile else None,
     )
     user_profile_repo.update_login(
         session, user_id, method=LOGIN_METHOD, nickname=display_name or None
     )
     record_login(session, request, user_id=user_id, method=LOGIN_METHOD, success=True)
 
-    logger.info(f"Logto 登录成功: user_id={user_id}, name={display_name or '-'}")
+    logger.info(f"Logto 登录成功: user_id={user_id}, name={effective_name}")
 
     return ApiResponse.success(
         data=LoginData(
@@ -137,10 +142,11 @@ async def logto_login(
             expires_in=expires_in,
             user=TokenUser(
                 user_id=user_id,
-                name=extra["name"],
+                name=effective_name,
                 role=profile.role if profile else "user",
                 email=extra["email"],
-                avatar=extra["picture"],
+                # 自定义头像（MinIO + avatar_url）优先于 Logto 上游 picture
+                avatar=(profile.avatar_url if profile else None) or extra["picture"],
             ),
         ),
         message="登录成功",

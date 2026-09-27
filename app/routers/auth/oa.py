@@ -49,7 +49,8 @@ def _extract_identity(user_info: Dict[str, Any]) -> tuple[str, str, Dict[str, An
     从 OA UserInfo 中提取本系统用户标识与展示信息
 
     Returns:
-        (user_id, name, extra)：user_id 优先取工号 EmployeeNo，缺失时降级为 EmployeeID
+        (user_id, display_name, extra)：user_id 优先取工号 EmployeeNo，缺失时降级为 EmployeeID；
+        display_name 组合规则：Name(AlisName)，缺一退化为存在的那个，双缺为空（展示层兜底工号）
     """
     employee_no = str(user_info.get("EmployeeNo") or "").strip()
     employee_id = user_info.get("EmployeeID")
@@ -63,13 +64,18 @@ def _extract_identity(user_info: Dict[str, Any]) -> tuple[str, str, Dict[str, An
     if not user_id:
         raise HTTPException(status_code=502, detail="OA 未返回有效的用户标识")
 
+    if name and alias_name:
+        display_name = f"{name}({alias_name})"
+    else:
+        display_name = name or alias_name
+
     extra = {
         "employee_no": employee_no or None,
         "employee_id": int(employee_id) if str(employee_id or "").isdigit() else None,
         "name": name or None,
         "alias_name": alias_name or None,
     }
-    return user_id, name or alias_name, extra
+    return user_id, display_name, extra
 
 
 @router.post(
@@ -112,15 +118,20 @@ async def oa_login(
         )
         raise HTTPException(status_code=403, detail="账号已被禁用，请联系管理员")
 
+    # 展示名优先库内值（用户可能自定义过昵称），库内为空退化上游组合名，最终兜底工号
+    effective_name = (profile.nickname if profile else None) or display_name or user_id
+
     token, expires_in = create_access_token(
-        user_id, display_name or None, role=profile.role if profile else None
+        user_id,
+        (profile.nickname if profile else None) or display_name or None,
+        role=profile.role if profile else None,
     )
     user_profile_repo.update_login(
         session, user_id, method=LOGIN_METHOD, nickname=display_name or None
     )
     record_login(session, request, user_id=user_id, method=LOGIN_METHOD, success=True)
 
-    logger.info(f"OA 登录成功: user_id={user_id}, name={display_name or '-'}")
+    logger.info(f"OA 登录成功: user_id={user_id}, name={effective_name}")
 
     return ApiResponse.success(
         data=LoginData(
@@ -129,11 +140,13 @@ async def oa_login(
             expires_in=expires_in,
             user=TokenUser(
                 user_id=user_id,
-                name=extra["name"],
+                name=effective_name,
                 role=profile.role if profile else "user",
                 employee_no=extra["employee_no"],
                 employee_id=extra["employee_id"],
                 alias_name=extra["alias_name"],
+                # 自定义头像（MinIO + avatar_url）优先；OA 无上游头像
+                avatar=profile.avatar_url if profile else None,
             ),
         ),
         message="登录成功",
