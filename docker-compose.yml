@@ -13,12 +13,16 @@ services:
       #   -pkeyopt rsa_keygen_bits:2048 -out /data/folio-auth/auth_private_key.pem
       - /data/folio-auth:/data/folio-auth:ro
     networks:
-      # 与 AKS 同源的 infra 网络：MySQL / Redis 容器互访
+      # 与 AKS 同源的 infra 网络：MySQL / Redis 容器互访；
+      # milvus-gpu_default 提供 milvus-minio（头像存储）的容器名解析
       - mysql_default
       - redis_default
+      - milvus-gpu_default
 
 networks:
   mysql_default:
     external: true
   redis_default:
+    external: true
+  milvus-gpu_default:
     external: true
