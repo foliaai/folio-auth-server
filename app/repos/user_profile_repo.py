@@ -134,6 +134,45 @@ class UserProfileRepository:
             logger.error(f"更新用户资料失败: user_id={user_id}, error={e}")
             return None
 
+    def update_avatar(
+        self,
+        session: Session,
+        user_id: str,
+        avatar_url: str,
+        avatar_storage_path: str,
+    ) -> Optional[UserProfile]:
+        """更新用户自定义头像（访问 URL + MinIO 存储路径）"""
+        profile = self.get_or_create(session, user_id)
+        try:
+            profile.avatar_url = avatar_url
+            profile.avatar_storage_path = avatar_storage_path
+            profile.updater = user_id
+            profile.update_time = datetime.now()
+            session.commit()
+            session.refresh(profile)
+            return profile
+        except SQLAlchemyError as e:
+            session.rollback()
+            logger.error(f"更新用户头像失败: user_id={user_id}, error={e}")
+            return None
+
+    def clear_avatar(self, session: Session, user_id: str) -> bool:
+        """清除用户自定义头像记录（恢复默认 Identicon）；返回是否发生变更"""
+        profile = self.get_by_user_id(session, user_id)
+        if profile is None or not profile.avatar_storage_path:
+            return False
+        try:
+            profile.avatar_url = None
+            profile.avatar_storage_path = None
+            profile.updater = user_id
+            profile.update_time = datetime.now()
+            session.commit()
+            return True
+        except SQLAlchemyError as e:
+            session.rollback()
+            logger.error(f"清除用户头像失败: user_id={user_id}, error={e}")
+            return False
+
     def update_role(
         self,
         session: Session,

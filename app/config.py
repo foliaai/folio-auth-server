@@ -151,6 +151,29 @@ def get_redis_url() -> Optional[str]:
     return None
 
 
+# ==================== MinIO（头像对象存储） ====================
+
+
+def get_minio_endpoint() -> str:
+    return (get_env("MINIO_ENDPOINT", "") or "").strip()
+
+
+def get_minio_access_key() -> str:
+    return get_env("MINIO_ACCESS_KEY", "") or ""
+
+
+def get_minio_secret_key() -> str:
+    return get_env("MINIO_SECRET_KEY", "") or ""
+
+
+def get_minio_bucket() -> str:
+    return get_env("MINIO_BUCKET", "knowledge-files") or "knowledge-files"
+
+
+def get_minio_secure() -> bool:
+    return get_env_bool("MINIO_SECURE", False)
+
+
 # ==================== OA 开放平台（内部部署） ====================
 
 

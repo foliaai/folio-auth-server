@@ -79,3 +79,10 @@ class LoginAuditView(BaseModel):
     ip: Optional[str] = None
     user_agent: Optional[str] = None
     login_time: Optional[str] = None
+
+
+class AvatarUploadResponse(BaseModel):
+    """头像上传结果"""
+
+    user_id: str = Field(..., description="用户标识")
+    avatar_url: str = Field(..., description="头像访问 URL（/auth-api 相对路径，带时间戳破缓存）")
