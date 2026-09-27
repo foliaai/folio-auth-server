@@ -1,0 +1,20 @@
+name: folio-auth-jp
+
+services:
+  # ==================== folio-auth-server（JP 内网，OA 模式，:8003） ====================
+  folio-auth-api:
+    build: .
+    container_name: folio-auth-api-jp
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    env_file:
+      - .env.jp
+    volumes:
+      # RS256 私钥只挂载不进镜像；JP 与 prd 各自独立密钥对（token 不互通属预期）
+      # JP 机器上生成：sudo openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048
+      #   -out /data/folio-auth/auth_private_key.pem
+      - /data/folio-auth:/data/folio-auth:ro
+
+# MySQL / Redis 走内网 IP（192.168.19.x），不需要外部容器网络；
+# AKS JP 容器经 extra_hosts(host-gateway) 用 http://host.docker.internal:8003 访问本服务（端口已发布到宿主机）
