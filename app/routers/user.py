@@ -9,9 +9,10 @@
     个人资料路由（从 AKS api/routers/user/profile.py 迁入）
       GET  /api/user/profile        - 获取当前用户资料
       PUT  /api/user/profile        - 更新当前用户资料（昵称、简介等）
-      POST /api/user/avatar         - 上传自定义头像（MinIO + avatar_url）
-      DELETE /api/user/avatar       - 删除自定义头像（恢复默认 Identicon）
+      POST /api/user/avatar         - 上传自定义头像（MinIO + avatar_url，覆盖旧头像）
       GET  /api/user/avatar/{id}    - 头像文件直读（匿名，img 标签用）
+    「恢复默认头像」功能已整体移除（前端无入口）：上传新图自动替换并清理旧对象，
+    默认 Identicon 仅在无自定义头像时展示。
 @Modify History:
 
 @Copyright：Copyright(c) 2024-2026. All Rights Reserved
@@ -214,32 +215,6 @@ async def upload_avatar(
         data=AvatarUploadResponse(user_id=user_id, avatar_url=avatar_url),
         message="头像上传成功",
     )
-
-
-@router.delete(
-    "/avatar",
-    response_model=ApiResponse[None],
-    summary="删除自定义头像（恢复默认 Identicon）",
-    description="清除头像记录并从 MinIO 删除文件，前端将降级展示由 user_id 确定的 Identicon。",
-)
-async def delete_avatar(
-    user_id: str = Depends(get_current_user_id),
-    session: Session = Depends(get_db_session),
-) -> ApiResponse[None]:
-    profile = user_profile_repo.get_by_user_id(session, user_id)
-    if not profile or not profile.avatar_storage_path:
-        return ApiResponse.success(message="头像已处于默认状态")
-
-    old_path = profile.avatar_storage_path
-    user_profile_repo.clear_avatar(session, user_id)
-
-    try:
-        await avatar_storage.delete(old_path)
-        logger.info(f"已从 MinIO 删除用户头像: user_id={user_id}, path={old_path}")
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"从 MinIO 删除头像异常（已清库忽略）: {old_path}, error={e}")
-
-    return ApiResponse.success(message="头像已成功重置为默认 Identicon")
 
 
 @router.get(
