@@ -16,7 +16,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Column, DateTime, Index, String, Text
+from sqlalchemy import JSON, Column, DateTime, Index, Integer, String, Text
 
 from app.db import AuditModel
 
@@ -54,6 +54,12 @@ class UserProfile(AuditModel):
     )
 
     bio = Column(Text, nullable=True, comment="用户个人简介 / 签名")
+
+    gender = Column(
+        Integer,
+        nullable=True,
+        comment="性别：OA Sex（1=男，2=女，0/NULL=未知）；每次 OA 登录以现值刷新",
+    )
 
     custom_data = Column(JSON, nullable=True, comment="扩展自定义 JSON 配置（上游 IdP 信息等）")
 

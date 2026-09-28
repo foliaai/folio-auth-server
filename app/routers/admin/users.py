@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db import get_db_session
-from app.repos import user_profile_repo
+from app.repos import organization_repo, user_profile_repo
 from app.schemas.common import ApiResponse, PaginationResponse
 from app.schemas.user import AdminUserView, RoleUpdateRequest, StatusUpdateRequest
 
@@ -35,13 +35,14 @@ router = APIRouter(tags=["Admin"])
 ALLOWED_ROLES = {"user", "admin"}
 
 
-def _to_view(profile) -> AdminUserView:
+def _to_view(profile, main_department: str | None = None) -> AdminUserView:
     return AdminUserView(
         user_id=profile.user_id,
         nickname=profile.nickname,
         role=profile.role,
         status=profile.status,
         bio=profile.bio,
+        main_department=main_department,
         last_login_at=profile.last_login_at.isoformat() if profile.last_login_at else None,
         last_login_method=profile.last_login_method,
         created_at=profile.create_time.isoformat() if profile.create_time else None,
@@ -63,9 +64,10 @@ async def list_users(
     profiles, total = user_profile_repo.list_profiles(
         session, page=page, page_size=page_size, keyword=keyword
     )
+    dept_map = organization_repo.map_main_departments(session, [p.user_id for p in profiles])
     return ApiResponse.success(
         data=PaginationResponse(
-            items=[_to_view(p) for p in profiles],
+            items=[_to_view(p, dept_map.get(p.user_id)) for p in profiles],
             total=total,
             page=page,
             page_size=page_size,

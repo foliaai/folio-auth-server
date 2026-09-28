@@ -14,9 +14,11 @@
 @Copyright：Copyright(c) 2024-2026. All Rights Reserved
 =================================================="""
 
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
+
+from app.schemas.common import UserDepartmentItem
 
 
 class OALoginRequest(BaseModel):
@@ -63,6 +65,12 @@ class TokenUser(BaseModel):
     alias_name: Optional[str] = Field(default=None, description="OA 员工别名（仅 OA 模式）")
     email: Optional[str] = Field(default=None, description="邮箱（仅 Logto 模式，若有）")
     avatar: Optional[str] = Field(default=None, description="上游头像 URL（仅 Logto 模式，若有）")
+    gender: Optional[int] = Field(
+        default=None, description="性别：1=男，2=女，0/空=未知（仅 OA 模式，每次登录以 OA 刷新）"
+    )
+    departments: List[UserDepartmentItem] = Field(
+        default_factory=list, description="所属组织（仅 OA 模式；主部门在前）"
+    )
 
 
 class LoginData(BaseModel):

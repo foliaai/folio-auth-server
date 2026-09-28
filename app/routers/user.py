@@ -20,6 +20,7 @@
 import io
 import time
 from pathlib import Path
+from typing import Dict, List
 
 from auth_core.deps import get_current_user_id
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
@@ -28,21 +29,23 @@ from PIL import Image
 from sqlalchemy.orm import Session
 
 from app.db import get_db_session
-from app.repos import user_profile_repo
-from app.schemas.common import ApiResponse
+from app.repos import organization_repo, user_profile_repo
+from app.schemas.common import ApiResponse, UserDepartmentItem
 from app.schemas.user import AvatarUploadResponse, UserProfileResponse, UserProfileUpdateRequest
 from app.services import avatar_storage
 
 router = APIRouter(prefix="/api/user", tags=["User"])
 
 
-def _to_response(profile) -> UserProfileResponse:
+def _to_response(profile, departments: List[Dict] | None = None) -> UserProfileResponse:
     return UserProfileResponse(
         user_id=profile.user_id,
         nickname=profile.nickname,
         role=profile.role,
         avatar_url=profile.avatar_url,
         bio=profile.bio,
+        gender=profile.gender,
+        departments=[UserDepartmentItem(**d) for d in (departments or [])],
         custom_data=profile.custom_data,
         last_login_at=profile.last_login_at.isoformat() if profile.last_login_at else None,
         last_login_method=profile.last_login_method,
@@ -62,7 +65,8 @@ async def get_profile(
     session: Session = Depends(get_db_session),
 ) -> ApiResponse[UserProfileResponse]:
     profile = user_profile_repo.get_or_create(session, user_id)
-    return ApiResponse.success(data=_to_response(profile), message="获取用户资料成功")
+    departments = organization_repo.list_user_departments(session, user_id)
+    return ApiResponse.success(data=_to_response(profile, departments), message="获取用户资料成功")
 
 
 @router.put(
@@ -86,7 +90,8 @@ async def update_profile(
     if not profile:
         raise HTTPException(status_code=500, detail="更新用户资料失败")
 
-    return ApiResponse.success(data=_to_response(profile), message="个人资料更新成功")
+    departments = organization_repo.list_user_departments(session, user_id)
+    return ApiResponse.success(data=_to_response(profile, departments), message="个人资料更新成功")
 
 
 # ==================== 自定义头像（MinIO + avatar_url） ====================

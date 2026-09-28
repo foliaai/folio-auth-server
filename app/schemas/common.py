@@ -47,6 +47,14 @@ class PaginationRequest(BaseModel):
         return (self.page - 1) * self.page_size
 
 
+class UserDepartmentItem(BaseModel):
+    """用户所属组织条目（登录响应 / 用户资料共用）"""
+
+    id: int = Field(..., description="OA DepartmentID（稳定锚）")
+    name: str = Field(..., description="完整组织名（如 IT技术中心/IT研发部）")
+    is_main: bool = Field(default=False, description="是否主部门（OA IsMainDepartment）")
+
+
 class PaginationResponse(BaseModel, Generic[T]):
     """分页响应"""
 

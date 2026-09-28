@@ -12,19 +12,23 @@
 @Copyright：Copyright(c) 2024-2026. All Rights Reserved
 =================================================="""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+from app.schemas.common import UserDepartmentItem
+
 
 class UserProfileResponse(BaseModel):
-    """个人资料（/api/user/profile 响应，结构与 AKS 一致 + role/last_login_at）"""
+    """个人资料（/api/user/profile 响应，结构与 AKS 一致 + role/last_login_at/gender/departments）"""
 
     user_id: str
     nickname: Optional[str] = None
     role: str = "user"
     avatar_url: Optional[str] = None
     bio: Optional[str] = None
+    gender: Optional[int] = None
+    departments: List[UserDepartmentItem] = Field(default_factory=list)
     custom_data: Optional[Dict[str, Any]] = None
     last_login_at: Optional[str] = None
     last_login_method: Optional[str] = None
@@ -51,6 +55,7 @@ class AdminUserView(BaseModel):
     role: str = "user"
     status: int = 0
     bio: Optional[str] = None
+    main_department: Optional[str] = None
     last_login_at: Optional[str] = None
     last_login_method: Optional[str] = None
     created_at: Optional[str] = None

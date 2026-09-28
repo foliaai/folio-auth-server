@@ -92,14 +92,21 @@ class UserProfileRepository:
         user_id: str,
         method: str,
         nickname: Optional[str] = None,
+        gender: Optional[int] = None,
     ) -> None:
-        """登录成功后更新最近登录时间/方式；首次登录补全昵称（尊重用户自定义）"""
+        """
+        登录成功后更新最近登录时间/方式；首次登录补全昵称（尊重用户自定义）
+
+        gender 与昵称语义相反：属身份属性，OA 给值即刷新（is not None 判断，0=未知也是有效值）。
+        """
         profile = self.get_or_create(session, user_id)
         try:
             profile.last_login_at = datetime.now()
             profile.last_login_method = method
             if nickname and not profile.nickname:
                 profile.nickname = nickname
+            if gender is not None:
+                profile.gender = gender
             profile.updater = user_id
             profile.update_time = datetime.now()
             session.commit()

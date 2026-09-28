@@ -23,17 +23,17 @@
 @Copyright：Copyright(c) 2024-2026. All Rights Reserved
 =================================================="""
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.db import get_db_session
-from app.repos import user_profile_repo
+from app.repos import organization_repo, user_profile_repo
 from app.repos.user_profile_repo import STATUS_ACTIVE
 from app.schemas.auth import LoginData, OALoginRequest, TokenUser
-from app.schemas.common import ApiResponse
+from app.schemas.common import ApiResponse, UserDepartmentItem
 from app.services.audit import record_login
 from app.services.oa_client import OAApiError, oa_client
 from app.services.token_service import create_access_token
@@ -44,13 +44,44 @@ FRONTEND_REDIRECT_HINT = "请返回登录页重新发起登录"
 LOGIN_METHOD = "oa"
 
 
+def _extract_departments(user_info: Dict[str, Any]) -> List[Dict]:
+    """
+    提取 OA UserDepartment 数组为 [{"id", "name", "is_main"}]
+
+    无 DepartmentID 或名称为空的条目跳过（记 warning）；
+    OA 未返回 / 返回空数组时为空列表（登录时将清空该用户既有组织关联）。
+    """
+    raw = user_info.get("UserDepartment")
+    if not isinstance(raw, list):
+        return []
+
+    departments: List[Dict] = []
+    for dept in raw:
+        if not isinstance(dept, dict):
+            continue
+        dept_id = dept.get("DepartmentID")
+        name = str(dept.get("DepartmentName") or "").strip()
+        try:
+            dept_id = int(dept_id)
+        except (TypeError, ValueError):
+            dept_id = None
+        if dept_id is None or not name:
+            logger.warning(f"忽略无效的 OA 部门条目: {dept}")
+            continue
+        departments.append(
+            {"id": dept_id, "name": name, "is_main": bool(dept.get("IsMainDepartment"))}
+        )
+    return departments
+
+
 def _extract_identity(user_info: Dict[str, Any]) -> tuple[str, str, Dict[str, Any]]:
     """
     从 OA UserInfo 中提取本系统用户标识与展示信息
 
     Returns:
         (user_id, display_name, extra)：user_id 优先取工号 EmployeeNo，缺失时降级为 EmployeeID；
-        display_name 组合规则：Name(AlisName)，缺一退化为存在的那个，双缺为空（展示层兜底工号）
+        display_name 组合规则：Name(AlisName)，缺一退化为存在的那个，双缺为空（展示层兜底工号）；
+        extra 另含 gender（Sex，0=未知）与 departments（UserDepartment 数组）
     """
     employee_no = str(user_info.get("EmployeeNo") or "").strip()
     employee_id = user_info.get("EmployeeID")
@@ -69,11 +100,18 @@ def _extract_identity(user_info: Dict[str, Any]) -> tuple[str, str, Dict[str, An
     else:
         display_name = name or alias_name
 
+    try:
+        gender = int(user_info.get("Sex"))
+    except (TypeError, ValueError):
+        gender = None
+
     extra = {
         "employee_no": employee_no or None,
         "employee_id": int(employee_id) if str(employee_id or "").isdigit() else None,
         "name": name or None,
         "alias_name": alias_name or None,
+        "gender": gender,
+        "departments": _extract_departments(user_info),
     }
     return user_id, display_name, extra
 
@@ -127,11 +165,20 @@ async def oa_login(
         role=profile.role if profile else None,
     )
     user_profile_repo.update_login(
-        session, user_id, method=LOGIN_METHOD, nickname=display_name or None
+        session,
+        user_id,
+        method=LOGIN_METHOD,
+        nickname=display_name or None,
+        gender=extra["gender"],
     )
+    # 身份属性以 OA 为准整体刷新（组织 upsert + 关联替换）；失败不阻断登录
+    organization_repo.sync_user_departments(session, user_id, extra["departments"])
     record_login(session, request, user_id=user_id, method=LOGIN_METHOD, success=True)
 
-    logger.info(f"OA 登录成功: user_id={user_id}, name={effective_name}")
+    logger.info(
+        f"OA 登录成功: user_id={user_id}, name={effective_name}, "
+        f"depts={[d['name'] for d in extra['departments']]}"
+    )
 
     return ApiResponse.success(
         data=LoginData(
@@ -147,6 +194,10 @@ async def oa_login(
                 alias_name=extra["alias_name"],
                 # 自定义头像（MinIO + avatar_url）优先；OA 无上游头像
                 avatar=profile.avatar_url if profile else None,
+                gender=extra["gender"],
+                departments=[
+                    UserDepartmentItem(**d) for d in extra["departments"]
+                ],
             ),
         ),
         message="登录成功",

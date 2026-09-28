@@ -14,6 +14,12 @@
 
 from app.repos.global_setting_repo import global_setting_repo
 from app.repos.login_audit_repo import login_audit_repo
+from app.repos.organization_repo import organization_repo
 from app.repos.user_profile_repo import user_profile_repo
 
-__all__ = ["user_profile_repo", "login_audit_repo", "global_setting_repo"]
+__all__ = [
+    "user_profile_repo",
+    "login_audit_repo",
+    "global_setting_repo",
+    "organization_repo",
+]
