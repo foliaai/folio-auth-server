@@ -243,5 +243,43 @@ class UserProfileRepository:
         return items, total
 
 
+    def search_public(
+        self,
+        session: Session,
+        q: str,
+        limit: int = 20,
+    ) -> list:
+        """按昵称/用户ID 模糊搜索存活用户（团队邀请搜人用，非管理端）
+
+        与 list_profiles 的区别：只返回存活且未禁用的用户、不分页、
+        不返回 total；防枚举约束（关键词最小长度、条数上限）由路由层保证。
+        """
+        keyword = (q or "").strip()
+        if not keyword:
+            return []
+        escaped = (
+            keyword.replace("\\", "\\\\")
+            .replace("%", "\\%")
+            .replace("_", "\\_")
+        )
+        like = f"%{escaped}%"
+        try:
+            return (
+                session.query(UserProfile)
+                .filter(
+                    UserProfile.deleted == 0,
+                    UserProfile.status == STATUS_ACTIVE,
+                    UserProfile.user_id.like(like, escape="\\")
+                    | UserProfile.nickname.like(like, escape="\\"),
+                )
+                .order_by(UserProfile.nickname)
+                .limit(max(1, min(limit, 20)))
+                .all()
+            )
+        except SQLAlchemyError as e:
+            logger.error(f"搜索用户失败: q={keyword!r}, error={e}")
+            return []
+
+
 # 全局单例
 user_profile_repo = UserProfileRepository()

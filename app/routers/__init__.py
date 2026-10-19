@@ -18,7 +18,14 @@
 
 from app.routers.admin import admin_router
 from app.routers.auth import auth_router
+from app.routers.directory import router as directory_router
 from app.routers.settings import router as settings_router
 from app.routers.user import router as user_router
 
-__all__ = ["auth_router", "user_router", "admin_router", "settings_router"]
+__all__ = [
+    "auth_router",
+    "user_router",
+    "admin_router",
+    "settings_router",
+    "directory_router",
+]

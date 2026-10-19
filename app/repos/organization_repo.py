@@ -109,6 +109,49 @@ class OrganizationRepository:
             logger.error(f"查询用户组织失败: user_id={user_id}, error={e}")
             return []
 
+    def get_by_department_id(
+        self, session: Session, department_id: int
+    ) -> Optional[Organization]:
+        """按 department_id 查组织（导入成员流程先确认组织存在）"""
+        try:
+            return (
+                session.query(Organization)
+                .filter(
+                    Organization.department_id == department_id,
+                    Organization.deleted == 0,
+                )
+                .first()
+            )
+        except SQLAlchemyError as e:
+            logger.error(f"查询组织失败: department_id={department_id}, error={e}")
+            return None
+
+    def list_department_members(
+        self, session: Session, department_id: int
+    ) -> List[Dict]:
+        """按部门反查成员（团队导入快照用；走 idx_uo_department 预留索引）
+
+        Returns:
+            [{"user_id": ..., "is_main": bool}, ...]（主部门在前）
+        """
+        try:
+            rows = (
+                session.query(UserOrganization)
+                .filter(UserOrganization.department_id == department_id)
+                .order_by(
+                    UserOrganization.is_main.desc(),
+                    UserOrganization.user_id,
+                )
+                .all()
+            )
+            return [
+                {"user_id": r.user_id, "is_main": bool(r.is_main)}
+                for r in rows
+            ]
+        except SQLAlchemyError as e:
+            logger.error(f"查询部门成员失败: department_id={department_id}, error={e}")
+            return []
+
     def map_main_departments(
         self, session: Session, user_ids: List[str]
     ) -> Dict[str, Optional[str]]:

@@ -27,7 +27,13 @@ from loguru import logger
 
 from app import config
 from app.db import check_db_alive, close_db, init_db
-from app.routers import admin_router, auth_router, settings_router, user_router
+from app.routers import (
+    admin_router,
+    auth_router,
+    directory_router,
+    settings_router,
+    user_router,
+)
 from app.services.cache import close_cache
 from app.services.keys import load_private_key
 
@@ -94,6 +100,7 @@ app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(admin_router)
 app.include_router(settings_router)
+app.include_router(directory_router)
 
 
 @app.get("/health", tags=["Ops"], summary="健康检查")
