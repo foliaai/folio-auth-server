@@ -16,7 +16,7 @@
 @Copyright：Copyright(c) 2024-2026. All Rights Reserved
 =================================================="""
 
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -45,3 +45,17 @@ class UserSearchItem(BaseModel):
 class UserSearchResponse(BaseModel):
     """用户搜索响应"""
     users: List[UserSearchItem] = Field(default_factory=list, description="命中列表")
+
+
+class UserProfileBrief(BaseModel):
+    """用户档案摘要（团队成员列表渲染用）"""
+    user_id: str = Field(..., description="用户ID")
+    display_name: str = Field(..., description="显示名（昵称缺失时回退为用户ID）")
+    avatar_url: Optional[str] = Field(
+        default=None, description="自定义头像 URL（未设置为 null）"
+    )
+
+
+class UserProfilesResponse(BaseModel):
+    """批量档案响应（入参中查不到的 id 静默缺席）"""
+    profiles: List[UserProfileBrief] = Field(default_factory=list)

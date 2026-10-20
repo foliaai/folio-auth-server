@@ -46,6 +46,30 @@ class UserProfileRepository:
             logger.error(f"查询用户档案失败: user_id={user_id}, error={e}")
             return None
 
+    def get_many_active(
+        self, session: Session, user_ids: list
+    ) -> list:
+        """按 user_id 批量查询存活档案（团队成员列表补显示名/头像用）
+
+        入参去重后 in 查询；不存在的 id 静默缺席，由调用方决定回退显示。
+        """
+        ids = list(dict.fromkeys(u for u in user_ids if u))
+        if not ids:
+            return []
+        try:
+            return (
+                session.query(UserProfile)
+                .filter(
+                    UserProfile.user_id.in_(ids),
+                    UserProfile.deleted == 0,
+                    UserProfile.status == STATUS_ACTIVE,
+                )
+                .all()
+            )
+        except SQLAlchemyError as e:
+            logger.error(f"批量查询用户档案失败: count={len(ids)}, error={e}")
+            return []
+
     def get_or_create(
         self,
         session: Session,

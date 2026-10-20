@@ -30,6 +30,8 @@ from app.schemas.common import ApiResponse
 from app.schemas.directory import (
     OrgMemberItem,
     OrgMembersResponse,
+    UserProfilesResponse,
+    UserProfileBrief,
     UserSearchItem,
     UserSearchResponse,
 )
@@ -39,6 +41,8 @@ router = APIRouter(prefix="/api", tags=["Directory"])
 # 防枚举：搜索关键词最小长度与返回上限
 _MIN_KEYWORD_LEN = 2
 _MAX_RESULTS = 20
+# 批量档案单次上限（团队成员列表一次拉全，防参数滥用）
+_MAX_BATCH_IDS = 100
 
 
 @router.get(
@@ -108,4 +112,46 @@ async def search_users(
             ],
         ),
         message="搜索成功",
+    )
+
+
+@router.get(
+    "/users/profiles",
+    response_model=ApiResponse[UserProfilesResponse],
+    summary="批量获取用户档案摘要",
+    description=(
+        "按 user_id 列表返回显示名 + 头像（团队成员列表渲染用）。"
+        f"单次最多 {_MAX_BATCH_IDS} 个；查不到的 id 静默缺席，"
+        "前端按工号回退显示。"
+    ),
+)
+async def get_user_profiles(
+    user_ids: str = Query(
+        ...,
+        description="逗号分隔的用户ID列表（如 84852241,10001）",
+    ),
+    _user_id: str = Depends(get_current_user_id),
+    session: Session = Depends(get_db_session),
+) -> ApiResponse[UserProfilesResponse]:
+    ids = [u.strip() for u in user_ids.split(",") if u.strip()]
+    if not ids:
+        raise HTTPException(status_code=400, detail="user_ids 不能为空")
+    if len(ids) > _MAX_BATCH_IDS:
+        raise HTTPException(
+            status_code=400, detail=f"单次最多 {_MAX_BATCH_IDS} 个用户ID"
+        )
+
+    profiles = user_profile_repo.get_many_active(session, ids)
+    return ApiResponse.success(
+        data=UserProfilesResponse(
+            profiles=[
+                UserProfileBrief(
+                    user_id=p.user_id,
+                    display_name=p.nickname or p.user_id,
+                    avatar_url=p.avatar_url,
+                )
+                for p in profiles
+            ],
+        ),
+        message="获取档案成功",
     )
