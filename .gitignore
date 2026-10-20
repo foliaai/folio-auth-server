@@ -220,3 +220,4 @@ __marimo__/
 # 部署环境文件（含密钥，禁止提交）
 .env.production
 .env.jp
+.env.dev
